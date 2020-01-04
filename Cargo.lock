@@ -55,6 +55,7 @@ dependencies = [
  "console",
  "indicatif",
  "rustc_version",
+ "shell-escape",
  "tracing",
  "tracing-subscriber",
  "walkdir",
@@ -337,6 +338,12 @@ dependencies = [
  "ryu",
  "serde",
 ]
+
+[[package]]
+name = "shell-escape"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "170a13e64f2a51b77a45702ba77287f5c6829375b04a69cf2222acd17d0cfab9"
 
 [[package]]
 name = "smallvec"

@@ -7,11 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-cargo_metadata = "0.9"
-tracing = "0.1"
-tracing-subscriber = "0.1"
+anyhow = "1.0.26"
+cargo_metadata = "0.9.1"
 rustc_version = "0.2.3"
 indicatif = "0.13.0"
 console = "0.9.1"
 walkdir = "2.2.9"
+shell-escape = "0.1.4"
