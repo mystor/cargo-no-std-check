@@ -1,4 +1,3 @@
-
 use anyhow::{bail, ensure, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use rustc_version::Channel;
@@ -112,6 +111,35 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
 }
 
 fn cargo_command(args: Vec<String>) -> Result<()> {
+    // Important helper flags.
+    match args.first().map(|s| s.as_str()) {
+        Some("-h") | Some("--help") => {
+            println!("\
+Wrapper for `cargo check` that prevents linking against libstd.
+
+USAGE:
+    cargo no-std-check [OPTIONS]
+
+OPTIONS:
+    -h, --help          Prints help information and exit
+    --version           Prints version information and exit
+
+    Any additional options are directly passed to `cargo check` (see
+    `cargo check --help` for possible options).
+
+TARGETS:
+    `cargo no-std-check` only checks the package's library target, and
+    will not attempt to build any tests, examples, or binaries.
+");
+            return Ok(());
+        }
+        Some("--version") => {
+            println!(concat!("cargo-no-std-check ", env!("CARGO_PKG_VERSION")));
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let current_exe = env::current_exe()?;
 
     let rustc_meta = rustc_version::version_meta()?;
