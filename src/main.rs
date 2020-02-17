@@ -43,7 +43,7 @@ impl Args {
             if arg == name {
                 return iter.next().map(|(i2, val)| (idx..i2 + 1, val.clone()));
             }
-            if arg.starts_with(name) && arg[name.len()..].starts_with("=") {
+            if arg.starts_with(name) && arg[name.len()..].starts_with('=') {
                 return Some((idx..idx + 1, arg[name.len() + 1..].to_owned()));
             }
         }
@@ -52,7 +52,7 @@ impl Args {
 }
 
 fn get_sysroot() -> Result<PathBuf> {
-    let rustc = env::var("RUSTC").unwrap_or("rustc".to_owned());
+    let rustc = env::var("RUSTC").unwrap_or_else(|_| "rustc".to_owned());
     let output = Command::new(rustc)
         .args(&["--print", "sysroot"])
         .stdout(Stdio::piped())
@@ -179,7 +179,7 @@ TARGETS:
         val
     } else {
         args.push(fake_target);
-        rustc_meta.host.clone()
+        rustc_meta.host
     };
 
     // XXX: Consider putting this in the target dir, and caching it?
@@ -195,7 +195,7 @@ TARGETS:
     );
 
     // Run cargo build
-    let cargo = env::var("CARGO").unwrap_or("cargo".to_owned());
+    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
     let status = Command::new(cargo)
         .arg("check")
         .arg("--lib")
