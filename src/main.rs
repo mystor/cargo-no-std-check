@@ -6,7 +6,7 @@ use std::fs;
 use std::iter::{self, IntoIterator};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
+use std::process::{self, Command, Stdio, ExitStatus};
 use std::str;
 use walkdir::WalkDir;
 use tempdir::TempDir;
@@ -133,7 +133,7 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
     Ok(())
 }
 
-fn cargo_command(mut args: Args) -> Result<()> {
+fn cargo_command(mut args: Args) -> Result<Option<ExitStatus>> {
     // --help
     if args.get_flag("-h").is_some() || args.get_flag("--help").is_some() {
         println!(
@@ -155,13 +155,13 @@ TARGETS:
     will not attempt to build any tests, examples, or binaries.
 "
         );
-        return Ok(());
+        return Ok(None);
     }
 
     // --version
     if args.get_flag("--version").is_some() {
         println!(concat!("cargo-no-std-check ", env!("CARGO_PKG_VERSION")));
-        return Ok(());
+        return Ok(None);
     }
 
     let current_exe = env::current_exe()?;
@@ -205,19 +205,10 @@ TARGETS:
         .env("CARGO_NOSTD_TARGET", &target)
         .env("CARGO_NOSTD_SYSROOT", nostd_sysroot.path())
         .status()?;
-
-    if !status.success() {
-        eprintln!(
-            "{:>12} {}",
-            console::style("Errored").bold().red(),
-            console::style(status).bold(),
-        );
-        process::exit(status.code().unwrap_or(1));
-    }
-    Ok(())
+    Ok(Some(status))
 }
 
-fn rustc_wrapper(mut args: Args) -> Result<()> {
+fn rustc_wrapper(mut args: Args) -> Result<Option<ExitStatus>> {
     ensure!(!args.args.is_empty(), "expected rustc argument");
 
     let sysroot = env::var("CARGO_NOSTD_SYSROOT")?;
@@ -246,17 +237,21 @@ fn rustc_wrapper(mut args: Args) -> Result<()> {
         eprintln!("`");
     }
 
-    let status = Command::new(&args.args[0]).args(&args.args[1..]).status()?;
-    match status.code() {
-        Some(code) => process::exit(code),
-        None => bail!("rustc exited with signal"),
-    }
+    Ok(Some(Command::new(&args.args[0]).args(&args.args[1..]).status()?))
 }
 
 fn main() -> Result<()> {
     let args = Args::new(env::args().skip(1).collect());
-    match env::var("CARGO_NOSTD_CHECK") {
-        Ok(_) => rustc_wrapper(args),
-        Err(_) => cargo_command(args),
+    let status = match env::var("CARGO_NOSTD_CHECK") {
+        Ok(_) => rustc_wrapper(args)?,
+        Err(_) => cargo_command(args)?,
+    };
+
+    if let Some(status) = status {
+        match status.code() {
+            Some(code) => process::exit(code),
+            None => bail!("exited with signal"),
+        }
     }
+    Ok(())
 }
