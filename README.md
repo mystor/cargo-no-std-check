@@ -1,5 +1,6 @@
 # cargo no-std-check
 ![CI](https://github.com/mystor/cargo-no-std-check/workflows/CI/badge.svg)
+![Crates.io](https://img.shields.io/crates/d/cargo-no-std-check)
 
 cargo no-std-check is a wrapper for `cargo check`, which ensures that your
 library does not link against `libstd`.
