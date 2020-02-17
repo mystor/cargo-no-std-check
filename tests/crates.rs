@@ -2,7 +2,9 @@ use assert_cmd::Command;
 use std::path::{Path, PathBuf};
 
 fn crate_path(krate: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/crates").join(krate)
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/crates")
+        .join(krate)
 }
 
 macro_rules! basic {
@@ -15,7 +17,7 @@ macro_rules! basic {
                 .assert()
                 .$what();
         }
-    }
+    };
 }
 
 basic!(nostd, success);

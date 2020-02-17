@@ -6,10 +6,10 @@ use std::fs;
 use std::iter::{self, IntoIterator};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio, ExitStatus};
+use std::process::{self, Command, ExitStatus, Stdio};
 use std::str;
-use walkdir::WalkDir;
 use tempdir::TempDir;
+use walkdir::WalkDir;
 
 const FAKE_TARGET: &str = "no_std-fake-target";
 
@@ -237,7 +237,9 @@ fn rustc_wrapper(mut args: Args) -> Result<Option<ExitStatus>> {
         eprintln!("`");
     }
 
-    Ok(Some(Command::new(&args.args[0]).args(&args.args[1..]).status()?))
+    Ok(Some(
+        Command::new(&args.args[0]).args(&args.args[1..]).status()?,
+    ))
 }
 
 fn main() -> Result<()> {
