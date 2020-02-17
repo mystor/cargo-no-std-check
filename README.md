@@ -1,5 +1,5 @@
 # cargo no-std-check
-![Github Actions](https://github.com/mystor/cargo-no-std-check/workflows/Rust/badge.svg)
+![CI](https://github.com/mystor/cargo-no-std-check/workflows/CI/badge.svg)
 
 cargo no-std-check is a wrapper for `cargo check`, which ensures that your
 library does not link against `libstd`.
