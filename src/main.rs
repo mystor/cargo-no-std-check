@@ -9,9 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::str;
 use walkdir::WalkDir;
-
-// FIXME: Hold some sort of lock while doing operations on our custom sysroot,
-// like cargo-xbuild does.
+use tempdir::TempDir;
 
 const FAKE_TARGET: &str = "no_std-fake-target";
 
@@ -184,26 +182,16 @@ TARGETS:
         rustc_meta.host.clone()
     };
 
-    let mut meta_cmd = cargo_metadata::MetadataCommand::new();
-    if let Some((_, path)) = args.get_arg("--manifest-path") {
-        meta_cmd.manifest_path(path);
-    }
-    let cargo_meta = meta_cmd.exec()?;
-
-    // XXX: Allow configuring the path?
-    let nostd_sysroot = cargo_meta.target_directory.join("nostd_sysroot");
-
-    // Build our new sysroot.
-    // FIXME: Support caching? Lock the directory?
-    let _ = fs::remove_dir_all(&nostd_sysroot);
+    // XXX: Consider putting this in the target dir, and caching it?
+    let nostd_sysroot = TempDir::new("nostd_sysroot")?;
     let sysroot = get_sysroot()?;
-    build_sysroot(&target, &sysroot, &nostd_sysroot)?;
+    build_sysroot(&target, &sysroot, nostd_sysroot.path())?;
 
     eprintln!(
         "{:>12} {} ({})",
-        console::style("Sysroot OK").bold().yellow(),
+        console::style("Sysroot").bold().yellow(),
         target,
-        nostd_sysroot.display(),
+        nostd_sysroot.path().display(),
     );
 
     // Run cargo build
@@ -215,7 +203,7 @@ TARGETS:
         .env("RUSTC_WRAPPER", &current_exe)
         .env("CARGO_NOSTD_CHECK", "1")
         .env("CARGO_NOSTD_TARGET", &target)
-        .env("CARGO_NOSTD_SYSROOT", &nostd_sysroot)
+        .env("CARGO_NOSTD_SYSROOT", nostd_sysroot.path())
         .status()?;
 
     if !status.success() {
