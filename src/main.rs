@@ -134,6 +134,14 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
 }
 
 fn cargo_command(mut args: Args) -> Result<Option<ExitStatus>> {
+    // Cargo passes the subcommand name as the first argument, remove it if found.
+    match args.args.first() {
+        Some(first) if first == "no-std-check" => {
+            args.args.remove(0);
+        }
+        _ => {}
+    }
+
     // --help
     if args.get_flag("-h").is_some() || args.get_flag("--help").is_some() {
         println!(
