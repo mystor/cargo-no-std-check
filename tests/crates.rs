@@ -24,3 +24,5 @@ basic!(withstd, failure);
 basic!(nostd_dep_nostd, success);
 basic!(nostd_dep_externstd, failure);
 basic!(nostd_dep_withstd, failure);
+basic!(macro_user, success);
+basic!(nostd_buildrs, success);

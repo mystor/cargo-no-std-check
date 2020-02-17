@@ -1,0 +1,12 @@
+[package]
+name = "nostd_buildrs"
+version = "0.1.0"
+authors = ["Nika Layzell <nika@thelayzells.com>"]
+edition = "2018"
+
+build = "build.rs"
+
+[dependencies]
+
+[build-dependencies]
+withstd = { path = "../withstd" }
