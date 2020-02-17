@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nigtly
+        toolchain: nightly
         override: true
         components: clippy
     - uses: actions/checkout@v2
