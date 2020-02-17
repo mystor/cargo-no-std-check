@@ -15,3 +15,6 @@ console = "0.9.1"
 walkdir = "2.2.9"
 shell-escape = "0.1.4"
 tempdir = "0.3.7"
+
+[dev-dependencies]
+assert_cmd = "0.12.0"

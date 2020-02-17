@@ -7,6 +7,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
 
 [[package]]
+name = "assert_cmd"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6283bac8dd7226470d491bc4737816fea4ca1fba7a2847f2e9097fd6bfb4624c"
+dependencies = [
+ "doc-comment",
+ "escargot",
+ "predicates",
+ "predicates-core",
+ "predicates-tree",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -21,6 +34,7 @@ name = "cargo-no-std-check"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assert_cmd",
  "cargo_metadata",
  "console",
  "indicatif",
@@ -41,6 +55,12 @@ dependencies = [
  "serde_derive",
  "serde_json",
 ]
+
+[[package]]
+name = "cfg-if"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "clicolors-control"
@@ -71,10 +91,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "difference"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
+
+[[package]]
+name = "doc-comment"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "923dea538cea0aa3025e8685b20d6ee21ef99c4f77e954a30febbaac5ec73a97"
+
+[[package]]
 name = "encode_unicode"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
+
+[[package]]
+name = "escargot"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74cf96bec282dcdb07099f7e31d9fed323bca9435a09aba7b6d99b7617bca96d"
+dependencies = [
+ "lazy_static",
+ "log",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "fuchsia-cprng"
@@ -113,10 +157,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d515b1f41455adea1313a4a2ac8a8a477634fbae63cc6100e3aebb207ce61558"
 
 [[package]]
+name = "log"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "number_prefix"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
+
+[[package]]
+name = "predicates"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9bfe52247e5cc9b2f943682a85a5549fb9662245caf094504e69a2f03fe64d4"
+dependencies = [
+ "difference",
+ "predicates-core",
+]
+
+[[package]]
+name = "predicates-core"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06075c3a3e92559ff8929e7a280684489ea27fe44805174c3ebd9328dcb37178"
+
+[[package]]
+name = "predicates-tree"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e63c4859013b38a76eca2414c64911fba30def9e3202ac461a2d22831220124"
+dependencies = [
+ "predicates-core",
+ "treeline",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -242,6 +321,9 @@ name = "serde"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "414115f25f818d7dfccec8ee535d76949ae78584fc4f79a6f45a904bf8ab4449"
+dependencies = [
+ "serde_derive",
+]
 
 [[package]]
 name = "serde_derive"
@@ -300,6 +382,12 @@ checksum = "72b620c5ea021d75a735c943269bb07d30c9b77d6ac6b236bc8b5c496ef05625"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "treeline"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7f741b240f1a48843f9b8e0444fb55fb2a4ff67293b50a9179dfd5ea67f8d41"
 
 [[package]]
 name = "unicode-width"
