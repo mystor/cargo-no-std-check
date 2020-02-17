@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-no_std-check"
+name = "cargo-no-std-check"
 version = "0.1.0"
 dependencies = [
  "anyhow",

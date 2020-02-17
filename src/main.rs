@@ -11,6 +11,8 @@ use walkdir::WalkDir;
 // FIXME: Hold some sort of lock while doing operations on our custom sysroot,
 // like cargo-xbuild does.
 
+const FAKE_TARGET: &str = "no_std-fake-target";
+
 fn get_sysroot() -> Result<PathBuf> {
     let rustc = env::var("RUSTC").unwrap_or("rustc".to_owned());
     let output = Command::new(rustc)
@@ -22,6 +24,60 @@ fn get_sysroot() -> Result<PathBuf> {
 
     let stdout = str::from_utf8(&output.stdout)?.trim_end();
     Ok(stdout.into())
+}
+
+fn with_flag<F>(flag_names: &[&str], args: &mut Vec<String>, callback: F)
+where
+    F: FnOnce(bool) -> bool,
+{
+    for idx in 0..args.len() {
+        for flag_name in flag_names {
+            if args[idx] == flag_name {
+                if !callback(true) {
+                    args.remove(idx);
+                }
+                return;
+            }
+        }
+    }
+    if callback(false) {
+        args.push(flag_names[0].to_owned());
+    }
+}
+
+// Super hacky method for manipulating the argument list.
+fn with_arg_equals<F>(arg_name: &str, args: &mut Vec<String>, callback: F)
+where
+    F: FnOnce(Option<String>) -> Option<String>,
+{
+    for idx in 0..args.len() {
+        // --name value
+        if args[idx] == arg_name && idx + 1 < args.len() {
+            let value = args[idx + 1].clone();
+            if let Some(new_value) = callback(Some(value)) {
+                args[idx + 1] = new_value;
+            } else {
+                args.drain(idx..=idx + 1);
+            }
+            return;
+        }
+
+        // --name=value
+        if args[idx].starts_with(arg_name) && args[idx][arg_name.len()..].starts_with("=") {
+            let value = args[idx][arg_name.len() + 1..].to_owned();
+            if let Some(new_value) = callback(Some(value)) {
+                args[idx] = format!("{}={}", arg_name, new_value);
+            } else {
+                args.remove(idx);
+            }
+            return;
+        }
+    }
+
+    if let Some(new_value) = callback(None) {
+        args.push(arg_name.to_owned());
+        args.push(new_value);
+    }
 }
 
 fn get_arg_equals(arg_name: &str, args: &[String]) -> Option<String> {
@@ -110,7 +166,7 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
     Ok(())
 }
 
-fn cargo_command(args: Vec<String>) -> Result<()> {
+fn cargo_command(mut args: Vec<String>) -> Result<()> {
     // Important helper flags.
     match args.first().map(|s| s.as_str()) {
         Some("-h") | Some("--help") => {
@@ -147,8 +203,16 @@ TARGETS:
         Channel::Nightly | Channel::Dev => {}
         channel => bail!("{:?} channel not supported", channel),
     }
-    // XXX: Pull this from `--target` arguments?
-    let target = &rustc_meta.host;
+
+    // Replace the provided target argument with our fake target, and extract
+    // which target we're going to be building for.
+    let mut target = rustc_meta.host.clone();
+    with_arg_equals("--target", &mut args, |target_arg| {
+        if let Some(target_arg) = target_arg {
+            target = target_arg;
+        }
+        Some(FAKE_TARGET.to_owned())
+    });
 
     let mut meta_cmd = cargo_metadata::MetadataCommand::new();
     if let Some(path) = manifest_path_arg(&args) {
@@ -176,8 +240,7 @@ TARGETS:
     let cargo = env::var("CARGO").unwrap_or("cargo".to_owned());
     let status = Command::new(cargo)
         .arg("check")
-        .arg("--target")
-        .arg("no_std-fake-target")
+        .arg("--lib")
         .args(&args)
         .env("RUSTC_WRAPPER", &current_exe)
         .env("CARGO_NOSTD_CHECK", "1")
@@ -205,27 +268,13 @@ fn rustc_wrapper(mut args: Vec<String>) -> Result<()> {
 
     // Correct the target to the correct target.
     let mut found_target = false;
-    {
-        let mut args_iter = args.iter_mut();
-        while let Some(arg) = args_iter.next() {
-            if arg == "--target" {
-                match args_iter.next() {
-                    Some(fake_target) if fake_target == "no_std-fake-target" => {
-                        *fake_target = target.clone();
-                        found_target = true;
-                    }
-                    _ => {}
-                }
-                break;
-            }
-
-            if arg == "--target=no_std-fake-target" {
-                *arg = format!("--target={}", target);
-                found_target = true;
-                break;
-            }
+    with_arg_equals("--target", &mut args, |arg| match arg {
+        Some(fake_target) if fake_target == FAKE_TARGET => {
+            found_target = true;
+            Some(target.clone())
         }
-    }
+        arg => arg,
+    });
 
     if found_target {
         // Add our modified artificial sysroot to flags.
