@@ -10,6 +10,39 @@ library does not link against `libstd`.
 operation requires a nightly compiler.
 
 ```
-$ cargo install no-std-check
+$ cargo install cargo-no-std-check
 ```
 
+## Usage
+
+Run this command on a crate to build it's lib target without access to `std`.
+Attempts to use `std` in the final library's dependency hierarchy will produce a
+build error.
+
+### Passing Example
+
+```
+$ cargo no-std-check --manifest-path nostd/Cargo.toml
+    Creating #![no_std] sysroot
+     Copying [============================================================] 154/154: done
+     Sysroot x86_64-unknown-linux-gnu (/tmp/nostd_sysroot.YhFkabJ2tXeK)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+```
+
+### Failing Example
+
+```
+$ cargo no-std-check --manifest-path withstd/Cargo.toml
+    Creating #![no_std] sysroot
+     Copying [============================================================] 154/154: done
+     Sysroot x86_64-unknown-linux-gnu (/tmp/nostd_sysroot.uYDnxo4ZNOLs)
+    Checking withstd v0.1.0 (/crates/withstd)
+error[E0463]: can't find crate for `std`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0463`.
+error: could not compile `withstd`.
+
+To learn more, run the command again with --verbose.
+```
