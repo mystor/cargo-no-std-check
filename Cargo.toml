@@ -1,6 +1,6 @@
 [package]
 name = "cargo-no-std-check"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Nika Layzell <nika@thelayzells.com>"]
 edition = "2018"
 description = "Check that a crate builds without std"
@@ -11,13 +11,13 @@ keywords = ["cli", "std", "no-std"]
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-anyhow = "1.0.26"
-rustc_version = "0.2.3"
-indicatif = "0.13.0"
-console = "0.9.1"
-walkdir = "2.2.9"
-shell-escape = "0.1.4"
+anyhow = "1.0.38"
+rustc_version = "0.3.3"
+indicatif = "0.15.0"
+console = "0.14.0"
+walkdir = "2.3.1"
+shell-escape = "0.1.5"
 tempdir = "0.3.7"
 
 [dev-dependencies]
-assert_cmd = "0.12.0"
+assert_cmd = "1.0.2"
