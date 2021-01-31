@@ -3,53 +3,11 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rustc_version::Channel;
 use std::env;
 use std::fs;
-use std::iter::{self, IntoIterator};
-use std::ops::Range;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, ExitStatus, Stdio};
+use std::process::{self, Command, Stdio};
 use std::str;
 use tempdir::TempDir;
 use walkdir::WalkDir;
-
-const FAKE_TARGET: &str = "no_std-fake-target";
-
-struct Args {
-    args: Vec<String>,
-}
-
-impl Args {
-    fn new(args: Vec<String>) -> Self {
-        Args { args }
-    }
-
-    fn push(&mut self, arg: String) {
-        self.args.push(arg)
-    }
-
-    fn replace<I>(&mut self, range: Range<usize>, args: I)
-    where
-        I: IntoIterator<Item = String>,
-    {
-        self.args.splice(range, args);
-    }
-
-    fn get_flag(&self, name: &str) -> Option<usize> {
-        self.args.iter().position(|arg| arg == name)
-    }
-
-    fn get_arg(&self, name: &str) -> Option<(Range<usize>, String)> {
-        let mut iter = self.args.iter().enumerate();
-        while let Some((idx, arg)) = iter.next() {
-            if arg == name {
-                return iter.next().map(|(i2, val)| (idx..i2 + 1, val.clone()));
-            }
-            if arg.starts_with(name) && arg[name.len()..].starts_with('=') {
-                return Some((idx..idx + 1, arg[name.len() + 1..].to_owned()));
-            }
-        }
-        None
-    }
-}
 
 fn get_sysroot() -> Result<PathBuf> {
     let rustc = env::var("RUSTC").unwrap_or_else(|_| "rustc".to_owned());
@@ -133,17 +91,34 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
     Ok(())
 }
 
-fn cargo_command(mut args: Args) -> Result<Option<ExitStatus>> {
+fn get_flag(args: &[String], name: &str) -> bool {
+    args.iter().position(|arg| arg == name).is_some()
+}
+
+fn get_arg<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        if arg == name {
+            return iter.next().map(|x| &x[..]);
+        }
+        if arg.starts_with(name) && arg[name.len()..].starts_with('=') {
+            return Some(&arg[name.len() + 1..]);
+        }
+    }
+    None
+}
+
+fn cargo_command(mut args: Vec<String>) -> Result<i32> {
     // Cargo passes the subcommand name as the first argument, remove it if found.
-    match args.args.first() {
+    match args.first() {
         Some(first) if first == "no-std-check" => {
-            args.args.remove(0);
+            args.remove(0);
         }
         _ => {}
     }
 
     // --help
-    if args.get_flag("-h").is_some() || args.get_flag("--help").is_some() {
+    if get_flag(&args, "-h") || get_flag(&args, "--help") {
         println!(
             "\
 Wrapper for `cargo check` that prevents linking against libstd.
@@ -163,16 +138,14 @@ TARGETS:
     will not attempt to build any tests, examples, or binaries.
 "
         );
-        return Ok(None);
+        return Ok(0);
     }
 
     // --version
-    if args.get_flag("--version").is_some() {
+    if get_flag(&args, "--version") {
         println!(concat!("cargo-no-std-check ", env!("CARGO_PKG_VERSION")));
-        return Ok(None);
+        return Ok(0);
     }
-
-    let current_exe = env::current_exe()?;
 
     let rustc_meta = rustc_version::version_meta()?;
     match rustc_meta.channel {
@@ -180,15 +153,14 @@ TARGETS:
         channel => bail!("{:?} channel not supported", channel),
     }
 
+    // Ensure there is a --target argument,
     // Determine which target we're building for, and replace it with our fake target.
-    let fake_target = format!("--target={}", FAKE_TARGET);
-    let target = if let Some((range, val)) = args.get_arg("--target") {
-        args.replace(range, iter::once(fake_target));
-        val
-    } else {
-        args.push(fake_target);
-        rustc_meta.host
-    };
+    let target = get_arg(&args, "--target")
+        .map(|val| val.to_owned())
+        .unwrap_or_else(|| {
+            args.push(format!("--target={}", rustc_meta.host));
+            rustc_meta.host
+        });
 
     // XXX: Consider putting this in the target dir, and caching it?
     let nostd_sysroot = TempDir::new("nostd_sysroot")?;
@@ -202,66 +174,27 @@ TARGETS:
         nostd_sysroot.path().display(),
     );
 
+    // build RUSTFLAGS, which will only be used for target libraries due to the
+    // explicit --target argument.
+    let mut rustflags = env::var_os("RUSTFLAGS").unwrap_or_default();
+    rustflags.push(" --sysroot=");
+    rustflags.push(nostd_sysroot.path());
+
     // Run cargo build
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
     let status = Command::new(cargo)
         .arg("check")
         .arg("--lib")
-        .args(&args.args)
-        .env("RUSTC_WRAPPER", &current_exe)
-        .env("CARGO_NOSTD_CHECK", "1")
-        .env("CARGO_NOSTD_TARGET", &target)
-        .env("CARGO_NOSTD_SYSROOT", nostd_sysroot.path())
+        .args(&args)
+        .env("RUSTFLAGS", rustflags)
         .status()?;
-    Ok(Some(status))
-}
-
-fn rustc_wrapper(mut args: Args) -> Result<Option<ExitStatus>> {
-    ensure!(!args.args.is_empty(), "expected rustc argument");
-
-    let sysroot = env::var("CARGO_NOSTD_SYSROOT")?;
-    let target = env::var("CARGO_NOSTD_TARGET")?;
-    let verbose = env::var("CARGO_NOSTD_VERBOSE").unwrap_or_default() == "1";
-
-    // Correct the target to the correct target.
-    if let Some((range, val)) = args.get_arg("--target") {
-        if val == FAKE_TARGET {
-            // Replace the target flag with the real target.
-            args.replace(range, iter::once(format!("--target={}", target)));
-            // Add our modified artificial sysroot to flags.
-            args.push(format!("--sysroot={}", sysroot));
-        }
+    match status.code() {
+        Some(code) => Ok(code),
+        None => bail!("exited with signal"),
     }
-
-    if verbose {
-        eprint!(
-            "{:>12} `{}",
-            console::style("Running").bold().yellow(),
-            shell_escape::escape((&args.args[0]).into()),
-        );
-        for arg in &args.args[1..] {
-            eprint!(" {}", shell_escape::escape(arg.into()));
-        }
-        eprintln!("`");
-    }
-
-    Ok(Some(
-        Command::new(&args.args[0]).args(&args.args[1..]).status()?,
-    ))
 }
 
 fn main() -> Result<()> {
-    let args = Args::new(env::args().skip(1).collect());
-    let status = match env::var("CARGO_NOSTD_CHECK") {
-        Ok(_) => rustc_wrapper(args)?,
-        Err(_) => cargo_command(args)?,
-    };
-
-    if let Some(status) = status {
-        match status.code() {
-            Some(code) => process::exit(code),
-            None => bail!("exited with signal"),
-        }
-    }
-    Ok(())
+    let args: Vec<_> = env::args().skip(1).collect();
+    process::exit(cargo_command(args)?)
 }
