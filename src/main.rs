@@ -41,38 +41,38 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
     // List of source/dst entries to copy.
     let mut to_copy = <Vec<(PathBuf, PathBuf)>>::new();
 
-    // Copy over `bin` entries.
-    let src_bin = src_root.join("bin");
-    let dst_bin = dst_root.join("bin");
-    for entry in WalkDir::new(&src_bin) {
+    // iterate over files in each root to locate ones to copy
+    for entry in WalkDir::new(&src_root) {
         let entry = entry?;
-        if entry.file_type().is_file() {
-            let suffix = entry.path().strip_prefix(&src_bin).unwrap();
-            to_copy.push((entry.path().to_owned(), dst_bin.join(suffix)));
+        if !entry.file_type().is_file() {
+            continue;
         }
-    }
 
-    // Copy over `lib` entries.
-    let src_lib = src_root.join("lib");
-    let dst_lib = dst_root.join("lib");
-    for entry in WalkDir::new(&src_lib) {
-        let entry = entry?;
-        if entry.file_type().is_file() {
-            // Copy everything but `libstd` to `dst_lib`.
-            let lib_name = entry
-                .file_name()
-                .to_str()
-                .unwrap_or("")
-                .split(|c| c == '-' || c == '.')
-                .next()
-                .unwrap();
-
-            // XXX: Support blocking other libs?
-            if lib_name != "libstd" {
-                let suffix = entry.path().strip_prefix(&src_lib).unwrap();
-                to_copy.push((entry.path().to_owned(), dst_lib.join(suffix)));
-            }
+        // only copy over files in bin/ and lib/ subdirectories
+        let suffix = entry.path().strip_prefix(&src_root).unwrap();
+        if suffix
+            .iter()
+            .find(|&seg| seg == "lib" || seg == "bin")
+            .is_none()
+        {
+            continue;
         }
+
+        // skip copying over the libstd rlib
+        let lib_name = entry
+            .file_name()
+            .to_str()
+            .unwrap_or("")
+            .split(|c| c == '-' || c == '.')
+            .next()
+            .unwrap();
+
+        // XXX: Support blocking other libs?
+        if lib_name == "libstd" {
+            continue;
+        }
+
+        to_copy.push((entry.path().to_owned(), dst_root.join(suffix)));
     }
 
     // Perform the copies.
