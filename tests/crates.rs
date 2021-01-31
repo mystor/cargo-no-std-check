@@ -82,7 +82,7 @@ macro_rules! basic {
                     .current_dir(&cwd)
                     .assert()
                     .success();
-                let assert = cmd.current_dir(&cwd).assert();
+                let assert = cmd.arg("--verbose").current_dir(&cwd).assert();
                 $what!(assert)
             });
         }
