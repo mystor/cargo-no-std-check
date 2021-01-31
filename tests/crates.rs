@@ -75,11 +75,15 @@ macro_rules! basic {
     ($krate:ident, $what:ident) => {
         #[test]
         fn $krate() {
+            let cwd = crate_path(stringify!($krate));
             test_command(|cmd| {
-                $what!(cmd
-                    .current_dir(crate_path(stringify!($krate)))
+                Command::new("cargo")
+                    .arg("clean")
+                    .current_dir(&cwd)
                     .assert()
-                    .stderr(predicates::str::contains("Checking")))
+                    .success();
+                let assert = cmd.current_dir(&cwd).assert();
+                $what!(assert)
             });
         }
     };
