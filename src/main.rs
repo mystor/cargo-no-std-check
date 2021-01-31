@@ -58,7 +58,7 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
             continue;
         }
 
-        // skip copying over the libstd rlib
+        // skip copying over the libstd rlib/dll
         let lib_name = entry
             .file_name()
             .to_str()
@@ -68,7 +68,7 @@ fn build_sysroot(target: &str, src_sysroot: &Path, dst_sysroot: &Path) -> Result
             .unwrap();
 
         // XXX: Support blocking other libs?
-        if lib_name == "libstd" {
+        if lib_name == "libstd" || lib_name == "std" {
             continue;
         }
 
